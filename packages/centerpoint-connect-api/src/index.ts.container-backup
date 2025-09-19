@@ -19182,53 +19182,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
 });
 
 
-// Required: Export default createServer function for Smithery
-export default function createServer({ config = {} }: { config?: any } = {}) {
-  console.error(`${SERVER_NAME} MCP Server (v${SERVER_VERSION}) initializing${API_BASE_URL ? `, proxying API at ${API_BASE_URL}` : ''}`);
-  
-  // Set up environment variables from config
-  if (config.CENTERPOINT_API_TOKEN) {
-    process.env.CENTERPOINT_API_TOKEN = config.CENTERPOINT_API_TOKEN;
+// --- Main Execution Function ---
+async function main() {
+  try {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error(`${SERVER_NAME} MCP Server (v${SERVER_VERSION}) running on stdio${API_BASE_URL ? `, proxying API at ${API_BASE_URL}` : ''}`);
+  } catch (error) {
+    console.error("Error during server startup:", error);
+    process.exit(1);
   }
-  if (config.NODE_ENV) {
-    process.env.NODE_ENV = config.NODE_ENV;
-  }
-  if (config.CENTERPOINT_LOG_LEVEL) {
-    process.env.CENTERPOINT_LOG_LEVEL = config.CENTERPOINT_LOG_LEVEL;
-  }
-  if (config.CENTERPOINT_CACHE_ENABLED !== undefined) {
-    process.env.CENTERPOINT_CACHE_ENABLED = config.CENTERPOINT_CACHE_ENABLED.toString();
-  }
-  if (config.CENTERPOINT_CACHE_TTL_MS) {
-    process.env.CENTERPOINT_CACHE_TTL_MS = config.CENTERPOINT_CACHE_TTL_MS.toString();
-  }
-  if (config.CENTERPOINT_RATE_LIMIT_ENABLED !== undefined) {
-    process.env.CENTERPOINT_RATE_LIMIT_ENABLED = config.CENTERPOINT_RATE_LIMIT_ENABLED.toString();
-  }
-  if (config.CENTERPOINT_REQUEST_TIMEOUT_MS) {
-    process.env.CENTERPOINT_REQUEST_TIMEOUT_MS = config.CENTERPOINT_REQUEST_TIMEOUT_MS.toString();
-  }
-  if (config.CENTERPOINT_RETRY_ATTEMPTS) {
-    process.env.CENTERPOINT_RETRY_ATTEMPTS = config.CENTERPOINT_RETRY_ATTEMPTS.toString();
-  }
-
-  return server;
 }
 
-// Optional: Export configuration schema as Zod schema
+// --- Cleanup Function ---
+async function cleanup() {
+    console.error("Shutting down MCP server...");
+    process.exit(0);
+}
 
-export const configSchema = z.object({
-  CENTERPOINT_API_TOKEN: z.string().describe("API token for CenterPoint Connect authentication"),
-  NODE_ENV: z.enum(["development", "staging", "production"]).default("production").describe("Environment setting"),
-  CENTERPOINT_LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info").describe("Log level"),
-  CENTERPOINT_CACHE_ENABLED: z.boolean().default(true).describe("Enable response caching"),
-  CENTERPOINT_CACHE_TTL_MS: z.number().min(1000).max(3600000).default(300000).describe("Cache TTL in milliseconds"),
-  CENTERPOINT_RATE_LIMIT_ENABLED: z.boolean().default(true).describe("Enable rate limiting"), 
-  CENTERPOINT_REQUEST_TIMEOUT_MS: z.number().min(1000).max(300000).default(30000).describe("Request timeout in milliseconds"),
-  CENTERPOINT_RETRY_ATTEMPTS: z.number().min(0).max(10).default(3).describe("Number of retry attempts")
-}).partial().refine(data => data.CENTERPOINT_API_TOKEN, {
-  message: "CENTERPOINT_API_TOKEN is required",
-  path: ["CENTERPOINT_API_TOKEN"]
+// Register signal handlers
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+
+// --- Start the Server ---
+main().catch((error) => {
+  console.error("Fatal error in main execution:", error);
+  process.exit(1);
 });
 
 // --- Helper Functions (Included in the generated server code) ---

@@ -5,15 +5,18 @@
   "private": true,
   "type": "module",
   "main": "build/index.js",
+  "module": "src/index.ts",
   "files": [
     "build",
     "src"
   ],
   "scripts": {
     "start": "node build/index.js",
-    "build": "./node_modules/.bin/tsc && chmod 755 build/index.js",
+    "build": "npx @smithery/cli build",
+    "dev": "npx @smithery/cli dev",
+    "build:local": "./node_modules/.bin/tsc && chmod 755 build/index.js",
     "typecheck": "tsc --noEmit",
-    "prestart": "npm run build",
+    "prestart": "npm run build:local",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

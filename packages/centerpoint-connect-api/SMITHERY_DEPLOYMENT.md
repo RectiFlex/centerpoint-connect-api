@@ -67,9 +67,9 @@ Smithery will automatically detect:
 - Your `smithery.yaml` for deployment configuration (in the package directory)
 
 The configuration includes:
-- **Runtime**: Container-based deployment
-- **Build**: Multi-stage Docker build from package directory
-- **Start Command**: STDIO transport for MCP
+- **Runtime**: TypeScript-based deployment (no Docker required)
+- **Build**: Automatic TypeScript compilation and bundling
+- **Entry Point**: `src/index.ts` with exported `createServer` function
 - **Environment Variables**: Configurable through Smithery UI
 
 ### 4. Set Environment Variables
@@ -152,12 +152,7 @@ The server exposes metrics for monitoring:
 The `smithery.yaml` file defines the complete configuration schema:
 
 ```yaml
-runtime: "container"
-build:
-  dockerfile: "Dockerfile"
-  dockerBuildPath: "."
-startCommand:
-  type: "stdio"
+runtime: "typescript"
 
 configSchema:
   type: object
@@ -171,14 +166,20 @@ configSchema:
     - CENTERPOINT_API_TOKEN
 ```
 
+The TypeScript runtime automatically:
+- Compiles and bundles your TypeScript code
+- Handles dependencies and imports
+- Optimizes for production deployment
+- No Docker configuration required
+
 ## 🛡️ Security
 
-### Container Security
+### Runtime Security
 
-- **Non-root user**: Container runs as user `mcp` (UID 1001)
-- **Read-only filesystem**: Enhanced security posture
-- **Minimal base image**: Alpine Linux for smaller attack surface
-- **Dependency scanning**: Automatic vulnerability scanning
+- **Sandboxed execution**: TypeScript runtime provides isolated execution
+- **Dependency validation**: Automatic security scanning of npm packages
+- **Code compilation**: Source code is compiled and optimized before deployment
+- **No container overhead**: Direct Node.js execution without Docker layers
 
 ### Secret Management
 
@@ -217,13 +218,13 @@ The deployment supports automatic scaling based on CPU utilization:
 
 #### Build Failures
 
-1. **Docker Build Error**:
+1. **TypeScript Build Error**:
    ```
-   Error: Dockerfile not found or invalid
+   Error: TypeScript compilation failed
    ```
-   - Ensure `Dockerfile` is in the `packages/centerpoint-connect-api/` directory
-   - Ensure base directory is set to `packages/centerpoint-connect-api` in Smithery
-   - Test build locally: `cd packages/centerpoint-connect-api && docker build -t test .`
+   - Ensure `src/index.ts` exports a default `createServer` function
+   - Check that all TypeScript dependencies are in `package.json`
+   - Test build locally: `cd packages/centerpoint-connect-api && npm run build`
 
 2. **NPM Install Error**:
    ```
@@ -289,12 +290,13 @@ The deployment supports automatic scaling based on CPU utilization:
 Before deploying, ensure:
 
 - [ ] Code is pushed to GitHub
-- [ ] `packages/centerpoint-connect-api/Dockerfile` builds successfully locally
-- [ ] `packages/centerpoint-connect-api/smithery.yaml` is properly configured
+- [ ] `packages/centerpoint-connect-api/src/index.ts` exports `createServer` function
+- [ ] `packages/centerpoint-connect-api/smithery.yaml` configured with `runtime: "typescript"`
+- [ ] `package.json` includes `module` field pointing to `src/index.ts`
 - [ ] Base directory set to `packages/centerpoint-connect-api` in Smithery settings
 - [ ] Environment variables are documented
 - [ ] API token is available
-- [ ] Local testing with MCP Inspector completed
+- [ ] Local testing completed with `npm run dev`
 - [ ] Documentation is up to date
 
 Your CenterPoint Connect API MCP Server is now ready for production deployment on Smithery! 🚀
