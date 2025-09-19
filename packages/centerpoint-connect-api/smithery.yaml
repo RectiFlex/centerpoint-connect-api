@@ -1,0 +1,60 @@
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+startCommand:
+  type: "stdio"
+
+# Configuration schema for environment variables
+configSchema:
+  type: object
+  properties:
+    CENTERPOINT_API_TOKEN:
+      type: string
+      description: "API token for CenterPoint Connect authentication"
+      secret: true
+    NODE_ENV:
+      type: string
+      description: "Environment (development/staging/production)"
+      default: "production"
+      enum: ["development", "staging", "production"]
+    CENTERPOINT_LOG_LEVEL:
+      type: string
+      description: "Log level (error/warn/info/debug)"
+      default: "info"
+      enum: ["error", "warn", "info", "debug"]
+    CENTERPOINT_CACHE_ENABLED:
+      type: boolean
+      description: "Enable response caching"
+      default: true
+    CENTERPOINT_CACHE_TTL_MS:
+      type: number
+      description: "Cache TTL in milliseconds"
+      default: 300000
+      minimum: 1000
+      maximum: 3600000
+    CENTERPOINT_RATE_LIMIT_ENABLED:
+      type: boolean
+      description: "Enable rate limiting"
+      default: true
+    CENTERPOINT_REQUEST_TIMEOUT_MS:
+      type: number
+      description: "Request timeout in milliseconds"
+      default: 30000
+      minimum: 1000
+      maximum: 300000
+    CENTERPOINT_RETRY_ATTEMPTS:
+      type: number
+      description: "Number of retry attempts"
+      default: 3
+      minimum: 0
+      maximum: 10
+  required:
+    - CENTERPOINT_API_TOKEN
+
+# Server metadata
+name: "CenterPoint Connect API"
+description: "MCP Server providing access to 124 CenterPoint Connect API endpoints"
+version: "1.1.0"
+author: "Jace Lander"
+repository: "https://github.com/jacelander/centerpoint-connect-api"

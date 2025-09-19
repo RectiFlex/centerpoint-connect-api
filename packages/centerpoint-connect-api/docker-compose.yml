@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  centerpoint-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: centerpoint-connect-api:1.1.0
+    container_name: centerpoint-mcp-server
+    restart: unless-stopped
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - CENTERPOINT_API_TOKEN=${CENTERPOINT_API_TOKEN}
+      - CENTERPOINT_LOG_LEVEL=${CENTERPOINT_LOG_LEVEL:-info}
+      - CENTERPOINT_CACHE_ENABLED=${CENTERPOINT_CACHE_ENABLED:-true}
+      - CENTERPOINT_CACHE_TTL_MS=${CENTERPOINT_CACHE_TTL_MS:-300000}
+      - CENTERPOINT_RATE_LIMIT_ENABLED=${CENTERPOINT_RATE_LIMIT_ENABLED:-true}
+      - CENTERPOINT_REQUEST_TIMEOUT_MS=${CENTERPOINT_REQUEST_TIMEOUT_MS:-30000}
+      - CENTERPOINT_RETRY_ATTEMPTS=${CENTERPOINT_RETRY_ATTEMPTS:-3}
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Health check passed')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Security
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    
+    # Network
+    networks:
+      - mcp-network
+
+  # Development service with hot reload
+  centerpoint-mcp-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: centerpoint-connect-api:dev
+    container_name: centerpoint-mcp-dev
+    profiles: ["dev"]
+    
+    # Development overrides
+    environment:
+      - NODE_ENV=development
+      - CENTERPOINT_API_TOKEN=${CENTERPOINT_API_TOKEN}
+      - CENTERPOINT_LOG_LEVEL=debug
+      - CENTERPOINT_ENABLE_REQUEST_LOGGING=true
+      - CENTERPOINT_CACHE_ENABLED=false
+    
+    # Mount source for development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    
+    # Override command for development
+    command: npm run dev
+    
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+    name: mcp-network

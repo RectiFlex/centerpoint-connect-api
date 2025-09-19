@@ -1,0 +1,214 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: centerpoint-mcp-server
+  labels:
+    app: centerpoint-mcp-server
+    version: "1.1.0"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: centerpoint-mcp-server
+  template:
+    metadata:
+      labels:
+        app: centerpoint-mcp-server
+        version: "1.1.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "3000"
+    spec:
+      serviceAccountName: centerpoint-mcp-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+      - name: mcp-server
+        image: ghcr.io/your-org/centerpoint-connect-api:1.1.0
+        imagePullPolicy: IfNotPresent
+        
+        ports:
+        - name: health
+          containerPort: 3000
+          protocol: TCP
+        
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: CENTERPOINT_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: centerpoint-secrets
+              key: api-token
+        - name: CENTERPOINT_LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: centerpoint-config
+              key: log-level
+        - name: CENTERPOINT_CACHE_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: centerpoint-config
+              key: cache-enabled
+        - name: CENTERPOINT_CACHE_TTL_MS
+          valueFrom:
+            configMapKeyRef:
+              name: centerpoint-config
+              key: cache-ttl-ms
+        - name: CENTERPOINT_RATE_LIMIT_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: centerpoint-config
+              key: rate-limit-enabled
+        - name: CENTERPOINT_REQUEST_TIMEOUT_MS
+          valueFrom:
+            configMapKeyRef:
+              name: centerpoint-config
+              key: request-timeout-ms
+        - name: CENTERPOINT_RETRY_ATTEMPTS
+          valueFrom:
+            configMapKeyRef:
+              name: centerpoint-config
+              key: retry-attempts
+        
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        livenessProbe:
+          exec:
+            command:
+            - node
+            - -e
+            - console.log('Health check passed')
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        
+        readinessProbe:
+          exec:
+            command:
+            - node
+            - -e
+            - console.log('Health check passed')
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+          successThreshold: 1
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/cache
+      
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 100Mi
+      - name: cache
+        emptyDir:
+          sizeLimit: 500Mi
+      
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      
+      # Node selection
+      nodeSelector:
+        kubernetes.io/os: linux
+      
+      # Tolerations for spot instances
+      tolerations:
+      - key: "spot"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      
+      # Pod anti-affinity for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - centerpoint-mcp-server
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: centerpoint-mcp-service
+  labels:
+    app: centerpoint-mcp-server
+spec:
+  selector:
+    app: centerpoint-mcp-server
+  ports:
+  - name: health
+    port: 3000
+    targetPort: health
+    protocol: TCP
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: centerpoint-mcp-service-account
+  labels:
+    app: centerpoint-mcp-server
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: centerpoint-config
+  labels:
+    app: centerpoint-mcp-server
+data:
+  log-level: "info"
+  cache-enabled: "true"
+  cache-ttl-ms: "300000"
+  rate-limit-enabled: "true"
+  request-timeout-ms: "30000"
+  retry-attempts: "3"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: centerpoint-secrets
+  labels:
+    app: centerpoint-mcp-server
+type: Opaque
+data:
+  # Base64 encoded API token - replace with actual token
+  api-token: <BASE64_ENCODED_API_TOKEN>

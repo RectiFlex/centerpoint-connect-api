@@ -1,0 +1,21 @@
+{
+  "name": "cpcapi-monorepo",
+  "version": "1.0.0",
+  "description": "CenterPoint Connect API MCP Server monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=packages/centerpoint-connect-api",
+    "test": "npm run test --workspace=packages/centerpoint-connect-api",
+    "dev": "npm run dev --workspace=packages/centerpoint-connect-api",
+    "docker:build": "npm run docker:build --workspace=packages/centerpoint-connect-api",
+    "docker:run": "npm run docker:run --workspace=packages/centerpoint-connect-api",
+    "k8s:deploy": "npm run k8s:deploy --workspace=packages/centerpoint-connect-api",
+    "smithery:deploy": "npm run smithery:deploy --workspace=packages/centerpoint-connect-api"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
